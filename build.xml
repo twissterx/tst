@@ -1,0 +1,411 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+      Need ANT: 1.7+
+
+      Revision: $Revision: 1181 $
+          Date: $Date: 2016-06-01 10:20:37 +0200 (Śr, 01 cze 2016) $
+   Last change: $Author: cnitsa $
+-->
+
+<project default="run" name="TimeSlotTracker" basedir=".">
+
+    <loadproperties srcfile="./build.properties"/>
+
+    <property name="javac.debug" value="true"/>
+    <property name="javac.optimize" value="false"/>
+    <property name="javac.encoding" value="utf8"/>
+
+    <property environment="env"/>
+    <property name="user.homedir" value="${env.HOME}"/>
+
+    <property name="javac.source" value="1.6"/>
+    <property name="javac.target" value="${javac.source}"/>
+
+    <property name="deploy" location="deploy"/>
+    <property name="deb.deploy" location="resources/installers/deb/debian/tmp"/>
+    <property name="classes" value="net/sf/timeslottracker"/>
+    <property name="classes_src" value="resources/java"/>
+    <property name="libs" value="resources/libs"/>
+    <property name="build" location="${deploy}/classes"/>
+    <property name="deployfile.name" value="tst.jar"/>
+    <property name="deployfile" location="${deploy}/${deployfile.name}"/>
+    <property name="extra_files" value="resources/extra_files"/>
+    <property name="deploy.extra_files" location="${build}"/>
+    <property name="release.docs" location="resources/for-release"/>
+    <property name="nsis" value="makensis"/>
+
+    <!-- tests -->
+    <property name="src.tests" value="test-resources/java"/>
+    <property name="libs.tests" value="test-resources/libs"/>
+    <property name="build.tests" location="${deploy}/test-classes"/>
+
+    <!-- releases -->
+    <property name="scp.url.base"
+              value="${username},timeslottracker@frs.sourceforge.net:/home/frs/project/t/ti/timeslottracker/TimeSlotTracker"/>
+    <property name="scp.url.unstable" value="Snapshot"/>
+
+    <path id="project.classid">
+        <pathelement path="${build}"/>
+        <fileset dir="${libs}" includes="*.jar"/>
+    </path>
+
+    <path id="project.classid.tests">
+        <pathelement path="${build}"/>
+        <pathelement path="${build.tests}"/>
+        <fileset dir="${libs}" includes="*.jar"/>
+        <fileset dir="${libs.tests}" includes="*.jar"/>
+    </path>
+
+    <target name="set_build_number_developer" unless="release">
+        <tstamp>
+            <format pattern="yyyyMMdd" property="timestamp.build"/>
+        </tstamp>
+
+        <property name="release" value="${timestamp.build}"/>
+        <property name="tst.version" value="${timestamp.build}"/>
+        <property name="tst.isDeveloperVersion" value="true"/>
+        <property name="scp.url" value="${scp.url.base}/${scp.url.unstable}"/>
+    </target>
+
+    <target name="set_build_number_release" if="release">
+        <property name="tst.version" value="${release}"/>
+        <property name="tst.isDeveloperVersion" value="false"/>
+        <property name="scp.url" value="${scp.url.base}/${release}"/>
+    </target>
+
+    <target name="init" depends="set_build_number_developer, set_build_number_release">
+        <property name="release.version" value="${ant.project.name}-${release}"/>
+        <property name="release.dir" location="releases/${release.version}"/>
+        <property name="release.source" location="${release.dir}/${release.version}-source"/>
+        <property name="package.src" value="${release.dir}/${release.version}-source.zip"/>
+        <property name="package.jar" value="${release.dir}/${release.version}.jar"/>
+        <property name="package.deb.file" value="timeslottracker_${release}_all.deb"/>
+        <property name="package.deb" value="${release.dir}/${package.deb.file}"/>
+        <property name="package.exe.file" value="${release.version}-setup.exe"/>
+        <property name="package.exe" value="${release.dir}/${release.version}-setup.exe"/>
+        <property name="package.xslt" value="${release.dir}/${release.version}-xslt.zip"/>
+
+        <tstamp>
+            <format pattern="HH:mm:ss" property="timestamp.start"/>
+        </tstamp>
+        <echo message="Ant started at ${timestamp.start}"/>
+        <mkdir dir="backup"/>
+        <mkdir dir="${deploy}"/>
+        <mkdir dir="${deploy.extra_files}"/>
+        <mkdir dir="${build}"/>
+        <mkdir dir="${build.tests}"/>
+    </target>
+
+    <target name="compile" depends="init">
+        <javac srcdir="${classes_src}" destdir="${build}" includeAntRuntime="false" includes="**/*.java"
+               debug="${javac.debug}" optimize="${javac.optimize}" encoding="${javac.encoding}" source="${javac.source}"
+               target="${javac.target}">
+            <classpath refid="project.classid"/>
+        </javac>
+    </target>
+
+    <target name="compile-tests" depends="init, compile">
+        <javac srcdir="${src.tests}" destdir="${build.tests}" includeAntRuntime="false" includes="**/*.java"
+               debug="${javac.debug}" optimize="${javac.optimize}" encoding="${javac.encoding}" source="${javac.source}"
+               target="${javac.target}">
+            <classpath refid="project.classid.tests"/>
+        </javac>
+    </target>
+
+    <target name="copy_extra_libraries" depends="init">
+        <unzip dest="${deploy.extra_files}">
+            <fileset dir="resources/libs" includes="**/*.jar"/>
+            <patternset>
+                <exclude name="**/MANIFEST*"/>
+                <exclude name="**/LICENSE*"/>
+                <exclude name="**/LICENCE*"/>
+                <exclude name="**/NOTICE*"/>
+            </patternset>
+        </unzip>
+        <copy todir="${deploy.extra_files}">
+            <fileset dir="resources/libs">
+                <include name="*license*"/>
+            </fileset>
+        </copy>
+    </target>
+
+    <target name="copy_resources" depends="init, copy_extra_libraries">
+        <copy todir="${deploy.extra_files}">
+            <fileset dir="resources/icons"/>
+            <fileset dir="${basedir}" includes="ChangeLog, KnownIssues"/>
+        </copy>
+
+        <copy todir="${deploy.extra_files}">
+            <fileset dir="${extra_files}"/>
+        </copy>
+
+        <delete>
+            <fileset dir="${deploy.extra_files}" includes="*.properties"/>
+        </delete>
+
+        <native2ascii encoding="UTF8" src="${extra_files}" dest="${deploy.extra_files}" includes="*.properties"/>
+
+        <copy todir="${deploy.extra_files}">
+            <fileset dir="${deploy.extra_files}" includes="**/*_en.properties"/>
+            <mapper type="glob" from="*_en.properties" to="*.properties"/>
+        </copy>
+
+        <echo file="${deploy.extra_files}/version.properties" append="false">version=${tst.version}
+        </echo>
+        <echo file="${deploy.extra_files}/version.properties" append="true">developer-version=${tst.isDeveloperVersion}
+        </echo>
+    </target>
+
+    <target name="pack" depends="compile, copy_resources" description="Make package">
+        <jar jarfile="${deployfile}" manifest="resources/META-INF/Manifest.mf" level="9">
+            <fileset dir="${build}"/>
+        </jar>
+        <tstamp>
+            <format pattern="HH:mm:ss" property="timestamp.stop"/>
+        </tstamp>
+        <echo message="Ant packed application at ${timestamp.stop}"/>
+    </target>
+
+    <target name="run" depends="pack" description="Run application">
+        <antcall target="backup-data"/>
+        <condition property="jvmArgs" value="-Xdock:name=TimeSlotTracker -Xmx64M" else="-Xmx64M">
+            <os family="mac"/>
+        </condition>
+        <java jar="${deployfile}" fork="true">
+            <sysproperty key="debug" value="yes"/>
+            <jvmarg value="${jvmArgs}"/>
+        </java>
+    </target>
+
+    <target name="backup-data">
+        <tstamp>
+            <format pattern="yyyy-MM-dd_HH-mm-ss" property="timestamp.backup"/>
+        </tstamp>
+        <copy file="${user.homedir}/timeslottracker.xml" tofile="backup/timeslottracker_${timestamp.backup}.xml"
+              failonerror="false"/>
+    </target>
+
+    <target name="clean" description="Clean build artifacts">
+        <delete dir="${deploy}"/>
+        <delete dir="${deb.deploy}"/>
+    </target>
+
+    <target name="rebuild" depends="clean, run" description="Rebuild and run"/>
+
+    <target name="javadoc" depends="pack" description="Create javadoc documentation">
+        <javadoc access="private" author="true" version="true" use="true" sourcepath="${classes_src}/${classes}"
+                 charset="UTF-8" destdir="${deploy}/javadoc" encoding="UTF-8"
+                 windowtitle="TimeSlotTracker SourceForge project">
+            <fileset dir="${classes_src}/${classes}" includes="**/*.java"/>
+        </javadoc>
+    </target>
+
+    <target name="release-add-banner" if="release">
+        <concat destfile="./ChangeLog.tmp">
+            <header>
+============================== version ${release} ==============================
+
+            </header>
+            <path path="./ChangeLog"/>
+        </concat>
+        <move file="./ChangeLog.tmp" tofile="./ChangeLog" overwrite="true"/>
+        <exec dir="." executable="svn">
+            <arg value="ci"/>
+            <arg value="-m [*] add version banner to ChangeLog"/>
+        </exec>
+    </target>
+
+    <target name="release-prepare" if="release" description="Preparing for releasing (-Drelease=version): make svn tag">
+        <property name="svn.release.tag" value="RELEASE_${release}"/>
+        <echo message="Creating tag in svn: ${svn.release.tag}"/>
+
+        <input message="Please enter sourceforge username" addproperty="username"/>
+        <fail unless="username">You must set username</fail>
+
+        <exec dir="." executable="svn">
+            <arg value="copy"/>
+            <arg value="-m 'creating tag for new version'"/>
+            <arg value="https://svn.code.sf.net/p/timeslottracker/code/source/trunk"/>
+            <arg value="https://svn.code.sf.net/p/timeslottracker/code/source/tags/${svn.release.tag}"/>
+        </exec>
+
+        <echo>Now checkout new tag ${svn.release.tag} and perform ant release</echo>
+    </target>
+
+    <target name="release-deploy" depends="init" description="Deploy release on Sourceforge">
+        <fail unless="username">You must set username</fail>
+        <fail unless="userpass">You must set userpass</fail>
+
+        <echo>Scp to ${scp.url}</echo>
+
+        <echo>File: ${package.jar}</echo>
+        <scp file="${package.jar}" todir="${scp.url}" password="${userpass}" trust="true"/>
+
+        <echo>File: ${package.deb}</echo>
+        <scp file="${package.deb}" todir="${scp.url}" password="${userpass}" trust="true"/>
+
+        <!--echo>File: ${package.exe}</echo>
+        <scp file="${package.exe}" todir="${scp.url}" password="${userpass}" trust="true" /-->
+    </target>
+
+    <target name="release-ok" depends="clean, pack" if="release">
+        <echo message="Preparing release [${release.version}] for SourceForge"/>
+
+        <mkdir dir="releases"/>
+        <delete dir="${release.dir}"/>
+        <mkdir dir="${release.dir}"/>
+        <mkdir dir="${release.source}"/>
+
+        <!-- sign jar -->
+        <fail unless="keystorepass">You must set keystore password</fail>
+        <fail unless="keypass">You must set private key password</fail>
+        <signjar destDir="${deploy}" alias="tst" keystore="${basedir}/tst-keys" storepass="${keystorepass}"
+                 keypass="${keypass}" preservelastmodified="true">
+            <path>
+                <fileset dir="${deploy}" includes="**/*.jar"/>
+            </path>
+        </signjar>
+
+        <antcall target="deb"/>
+        <!--antcall target="exe" /-->
+
+        <!-- copy source to release source -->
+        <copy todir="${release.source}">
+            <fileset dir=".">
+                <exclude name="deploy/**"/>
+                <exclude name="backup/**"/>
+                <exclude name="next-release/**"/>
+                <exclude name="nbproject/private/**"/>
+                <exclude name="server/**"/>
+                <exclude name="releases/**"/>
+                <exclude name="resources/*.jude"/>
+                <exclude name="resources/icons-*/"/>
+                <exclude name="test-resources/*.xml"/>
+                <exclude name="resources/installers/deb/debian/tmp/**"/>
+                <exclude name="resources/installers/deb/debian/*.log"/>
+                <exclude name="resources/installers/deb/debian/files"/>
+                <exclude name="resources/installers/deb/debian/substvars"/>
+                <exclude name="tst-keys"/>
+                <exclude name="build.properties"/>
+            </fileset>
+        </copy>
+
+        <filter token="version" value="${release}"/>
+        <copy todir="${release.dir}" filtering="true">
+            <fileset dir="${release.docs}"/>
+        </copy>
+
+        <!-- prepare source archive .zip -->
+        <zip basedir="${release.dir}" destfile="${package.src}" casesensitive="true"
+             includes="${release.version}-source/**"/>
+
+        <!-- prepare xslt archive .zip -->
+        <zip basedir="${release.dir}/${release.version}-source/resources/extra_files"
+             destfile="${release.dir}/${release.version}-xslt.zip" casesensitive="true" includes="xslt/**"/>
+
+        <!-- prepare jar archive -->
+        <copy tofile="${package.jar}">
+            <fileset file="${deployfile}"/>
+        </copy>
+
+        <copy todir="${release.dir}">
+            <fileset file="${deploy}/${package.deb.file}"/>
+            <fileset file="${deploy}/${package.exe.file}"/>
+        </copy>
+
+        <echo message=""/>
+        <echo message="Remember to upload files to SourceForge: "/>
+        <echo message="    server: frs.sourceforge.net (Web Upload, WebDAV, rsync over SSH, sftp)"/>
+        <echo message="     login: username"/>
+        <echo message="  password: password"/>
+        <echo message="remote dir: u/us/username/uploads"/>
+        <echo message="      mode: binary"/>
+        <echo message="     file1: ${package.src}"/>
+        <echo message="     file2: ${package.xslt}"/>
+        <echo message="     file3: ${package.jar}"/>
+        <echo message="     file4: ${package.deb}"/>
+        <echo message="     file5: ${package.exe}"/>
+
+        <echo message=""/>
+        <echo message="Also remember to create new group for this version: "/>
+        <echo message="       url: https://sourceforge.net/p/timeslottracker/bugs/milestones"/>
+
+        <echo message=""/>
+        <echo message="Also remember to update jnlp jar at frs.sourceforge.net"/>
+        <echo message="       cmd: sftp username,timeslottracker@frs.sourceforge.net/htdocs"/>
+    </target>
+
+    <target name="release-fail" unless="release">
+        <echo message="You didn't set property [release]."/>
+        <echo message="Call ant in that way:"/>
+        <echo message="ant -Drelease=1.2.7 release"/>
+        <echo message="to produce release: ${ant.project.name}-1.2.7 and RELEASE_1.2.7 tag in svn"/>
+        <fail message="Abort"/>
+    </target>
+
+    <target name="release" depends="release-ok, release-fail"
+            description="Make release (specify version -Drelease=version or will be used yyyyMMdd as release)">
+    </target>
+
+    <target name="deb" description="Make debian package">
+        <exec executable="sh" dir="${basedir}/resources/installers/deb/">
+            <arg value="-c"/>
+            <arg value="./build.sh ${release}"/>
+        </exec>
+    </target>
+
+    <target name="exe" depends="release-fail" description="Make exe package">
+        <exec executable="sh" dir="${basedir}/resources/installers/nsis/">
+            <arg value="-c"/>
+            <arg value="${nsis} -DPRODUCT_VERSION=${release} tst.nsi"/>
+        </exec>
+        <exec executable="sh" dir="${basedir}/resources/installers/nsis/">
+            <arg value="-c"/>
+            <arg value="${nsis} -DPRODUCT_VERSION=${release} setup.nsi"/>
+        </exec>
+    </target>
+
+    <target name="test" description="Run junit tests" depends="compile-tests">
+        <junit printsummary="yes" haltonfailure="yes">
+            <classpath refid="project.classid.tests"/>
+            <!--formatter type="plain"/-->
+            <batchtest fork="no">
+                <fileset dir="${src.tests}">
+                    <include name="**/*Test*.java"/>
+                </fileset>
+            </batchtest>
+        </junit>
+    </target>
+
+    <!-- IDE specific tasks -->
+
+    <!-- IDEA IDE specific -->
+    <target name="copy_files_in_idea" depends="copy_resources"
+            description="Copies files from build directory to default package for IntelliJ Idea">
+        <copy todir="../../out/production/source">
+            <fileset dir="${build}" excludes="**/*.class"/>
+        </copy>
+    </target>
+
+    <!-- NetBeans IDE specific: profile main class -->
+    <target name="profile-single">
+        <ant antfile="build.xml" inheritall="false" target="pack"/>
+        <fail unless="netbeans.home">This target can only run inside the NetBeans IDE.</fail>
+        <property name="run.class" value="net.sf.timeslottracker.Starter"/>
+
+        <nbprofiledirect>
+            <classpath>
+                <pathelement location="deploy/classes"/>
+            </classpath>
+        </nbprofiledirect>
+
+        <java classname="${run.class}" failonerror="true" fork="true">
+            <jvmarg value="${profiler.info.jvmargs.agent}"/>
+            <classpath>
+                <pathelement location="deploy/classes"/>
+            </classpath>
+        </java>
+    </target>
+
+</project>

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <libelement value="jar://$MODULE_DIR$/resources/libs/lucene-core-2.3.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/csv4j-0.4.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/commons-codec-1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/commons-lang-2.4.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/commons-logging-1.1.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/ical4j-1.0-rc1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/jna-4.0.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/jna-platform-4.0.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/jgoodies-looks-2.6.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/resources/libs/jgoodies-common-1.8.0.jar!/" />
+    <src_description expected_position="0">
+      <src_folder value="file://$MODULE_DIR$/resources/java" expected_position="0" />
+      <src_folder value="file://$MODULE_DIR$/test-resources/java" expected_position="1" />
+      <src_folder value="file://$MODULE_DIR$/resources/icons" expected_position="2" />
+      <src_folder value="file://$MODULE_DIR$/resources/extra_files" expected_position="3" />
+    </src_description>
+  </component>
+  <component name="NewModuleRootManager" inherit-compiler-output="false">
+    <output url="file://$MODULE_DIR$/deploy/classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/resources/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/test-resources/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/resources/icons" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/resources/extra_files" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/.externalToolBuilders" />
+      <excludeFolder url="file://$MODULE_DIR$/.settings" />
+      <excludeFolder url="file://$MODULE_DIR$/nbproject" />
+      <excludeFolder url="file://$MODULE_DIR$/releases" />
+      <excludeFolder url="file://$MODULE_DIR$/resources/icons-develop" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="jdk" jdkName="1.7_67" jdkType="JavaSDK" />
+    <orderEntry type="module-library">
+      <library name="lucene-core-2.3.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/lucene-core-2.3.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="junit4">
+        <CLASSES>
+          <root url="jar://$APPLICATION_HOME_DIR$/lib/junit-4.12.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="csv4j-0.4.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/csv4j-0.4.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="commons-codec-1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/commons-codec-1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="commons-lang-2.4.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/commons-lang-2.4.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="commons-logging-1.1.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/commons-logging-1.1.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="ical4j-1.0-rc1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/ical4j-1.0-rc1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jna-4.0.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/jna-4.0.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jna-platform-4.0.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/jna-platform-4.0.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jgoodies-looks-2.6.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/jgoodies-looks-2.6.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jgoodies-common-1.8.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/resources/libs/jgoodies-common-1.8.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+  </component>
+</module>
