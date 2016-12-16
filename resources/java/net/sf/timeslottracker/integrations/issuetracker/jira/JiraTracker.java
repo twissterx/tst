@@ -3,6 +3,7 @@ package net.sf.timeslottracker.integrations.issuetracker.jira;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
@@ -24,6 +25,9 @@ import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.json.Json;
+import javax.json.stream.JsonParser;
+import javax.json.stream.JsonParser.Event;
 import javax.swing.JOptionPane;
 
 import net.sf.timeslottracker.core.Action;
@@ -39,8 +43,10 @@ import net.sf.timeslottracker.integrations.issuetracker.IssueHandler;
 import net.sf.timeslottracker.integrations.issuetracker.IssueKeyAttributeType;
 import net.sf.timeslottracker.integrations.issuetracker.IssueTracker;
 import net.sf.timeslottracker.integrations.issuetracker.IssueTrackerException;
+import net.sf.timeslottracker.integrations.issuetracker.IssueWorklogIdType;
 import net.sf.timeslottracker.integrations.issuetracker.IssueWorklogStatusType;
 import net.sf.timeslottracker.utils.StringUtils;
+
 import org.apache.commons.codec.binary.Base64;
 
 /**
@@ -61,6 +67,8 @@ public class JiraTracker implements IssueTracker {
   public static final String JIRA_VERSION_3 = "3";
   private static final String JIRA_DEFAULT_VERSION = JIRA_VERSION_6;
 
+  private static final long ROUND_MIN = 5;
+  
   private static final Logger LOG = Logger
       .getLogger(JiraTracker.class.getName());
 
@@ -218,9 +226,13 @@ public class JiraTracker implements IssueTracker {
 
       // if not
       String urlString = MessageFormat.format(issueUrlTemplate,
-          getBaseJiraUrl(), key, getAuthorizedParams());
+          getBaseJiraUrl(), key, "os_authType=basic");
       URL url = new URL(urlString);
       URLConnection connection = url.openConnection();
+      String userpass = getLogin() + ":" + getPassword();
+      String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes());
+
+      connection.setRequestProperty("Authorization", basicAuth);
       try {
         BufferedReader br = new BufferedReader(
             new InputStreamReader(connection.getInputStream()));
@@ -291,9 +303,15 @@ public class JiraTracker implements IssueTracker {
 
           // if not
           String urlString = MessageFormat.format(filterUrlTemplate,
-              getBaseJiraUrl(), filterId, getAuthorizedParams());
+              getBaseJiraUrl(), filterId, "os_authType=basic");
           URL url = new URL(urlString);
           URLConnection connection = url.openConnection();
+          
+          String userpass = getLogin() + ":" + getPassword();
+          String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes());
+
+          connection.setRequestProperty("Authorization", basicAuth);
+          
           try {
 
             BufferedReader br = new BufferedReader(
@@ -376,8 +394,9 @@ public class JiraTracker implements IssueTracker {
       OutputStreamWriter writer = new OutputStreamWriter(
           httpConnection.getOutputStream());
       try {
-
-        String jiraDuration = (duration / 1000 / 60) + "m";
+      	long minsDuration = duration / 1000 / 60;
+    	long roundedDuration = (long)Math.ceil(minsDuration / (float)ROUND_MIN) * ROUND_MIN;
+        String jiraDuration = roundedDuration + "m";
         if (version.equals(JIRA_VERSION_6)) {
           writer.append("{").append(getPairSC("timeSpent", jiraDuration)).append(",")
               .append(getPairSC("started", new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SS.sZ")
@@ -399,11 +418,11 @@ public class JiraTracker implements IssueTracker {
         writer.flush();
         writer.close();
       }
-      BufferedReader br = new BufferedReader(
-          new InputStreamReader(connection.getInputStream()));
-      String line = br.readLine();
-      br.close();
-      LOG.finest("jira result: " + line);
+         
+      String worklogId = getWorklogIdFromResponse(connection.getInputStream());      
+      connection.getInputStream().close();
+      
+      LOG.finest("jira worklogId: " + worklogId);
 
       if (statusAttribute == null) {
         statusAttribute = new Attribute(issueWorklogStatusType);
@@ -415,11 +434,33 @@ public class JiraTracker implements IssueTracker {
 
       statusAttribute.set(timeSlot.getTime());
 
+      if (worklogId != null) {
+          Attribute worklogIdAttribute = new Attribute(IssueWorklogIdType.getInstance());
+          worklogIdAttribute.set(worklogId);
+          timeSlot.getAttributes().add(worklogIdAttribute);
+      }
+      
       LOG.info("Updated jira worklog with key: " + key);
     }
   }
 
-  private String getAddWorklogPath(String issueId) {
+  private String getWorklogIdFromResponse(InputStream inputStream) {
+	  String id = null;
+	  JsonParser parser = Json.createParser(inputStream);	  
+	  
+	  while (parser.hasNext() && id == null) {
+		  Event event = parser.next();
+		  
+		  if (event == Event.KEY_NAME && "id".equals(parser.getString())) {			  
+			  parser.next();
+			  id = parser.getString();
+		  }
+	  }
+	  
+	  return id;
+  }
+
+private String getAddWorklogPath(String issueId) {
     String path;
     if (version.equals(JIRA_VERSION_3)) {
       path = "/secure/LogWork.jspa";

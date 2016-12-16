@@ -9,6 +9,8 @@ import javax.swing.Timer;
 
 import net.sf.timeslottracker.core.Configuration;
 import net.sf.timeslottracker.core.TimeSlotTracker;
+import net.sf.timeslottracker.data.Attribute;
+import net.sf.timeslottracker.data.Task;
 import net.sf.timeslottracker.data.TimeSlot;
 import net.sf.timeslottracker.utils.PlatformUtils;
 
@@ -57,7 +59,7 @@ public class UserIdleDetector implements ActionListener {
     }
 
     TimeSlot activeTimeSlot = timeSlotTracker.getActiveTimeSlot();
-    if (activeTimeSlot == null) {
+    if (activeTimeSlot == null || skipTask(activeTimeSlot.getTask())) {
       // no task is timing
       autopaused = false;
       return;
@@ -102,4 +104,15 @@ public class UserIdleDetector implements ActionListener {
     return 0;
   }
 
+  private boolean skipTask(Task task) {
+	  for (Attribute attribute : task.getAttributes()) {
+		  if (attribute.getAttributeType().equals(NoIdleAttributeType.getInstance()) && 
+			  Boolean.TRUE.equals(Boolean.valueOf(attribute.get().toString()))) {
+			  
+			  return true;
+		  }
+	  }
+	  
+	  return false;
+  }
 }

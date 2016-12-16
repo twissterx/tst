@@ -79,6 +79,9 @@ import net.sf.timeslottracker.worktime.WorkTimeServiceImpl;
 @SuppressWarnings("serial")
 public class Starter extends JFrame implements TimeSlotTracker {
 
+  private static final String DOTS_END = " ...";
+  private static final int BALLON_TEXT_MAX_LEN = 63;
+
   /** logging using java.util.logging package * */
   private static final Logger LOG = Logger.getLogger("net.sf.timeslottracker");
 
@@ -834,10 +837,18 @@ public class Starter extends JFrame implements TimeSlotTracker {
     Boolean showTaskJustStarted = configuration.getBoolean(
         Configuration.CONFIRMATION_SHOW_TASK_HAS_JUST_STARTED_MESSAGE, true);
     if (showTaskJustStarted.booleanValue() == true) {
-      final String title = getString("trayIcon.title.timing.started",
-          new Object[] { layoutManager.getTasksInterface().getSelected()
-              .getName() });
-      trayIconService.showMessage(title, d + " ...", TrayIcon.MessageType.INFO);
+      String taskName = layoutManager.getTasksInterface().getSelected()
+              .getName();
+      String title = getString("trayIcon.title.timing.started", new Object[] { taskName });
+      
+      int overLength = title.length() - BALLON_TEXT_MAX_LEN;
+      
+      if (overLength > 0) {
+    	  taskName = taskName.substring(0, taskName.length() - overLength - DOTS_END.length()) + DOTS_END;
+    	  title = getString("trayIcon.title.timing.started", new Object[] { taskName });
+      }
+      
+      trayIconService.showMessage(title, d + DOTS_END, TrayIcon.MessageType.INFO);
     }
 
     // select active timeslot

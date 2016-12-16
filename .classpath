@@ -4,7 +4,7 @@
 	<classpathentry excluding="**/*.svn.*" kind="src" path="test-resources/java"/>
 	<classpathentry excluding="**/*.svn.*|**/.svn/*" kind="src" path="resources/icons"/>
 	<classpathentry excluding="**/*.svn.*|**/.svn/*" kind="src" path="resources/extra_files"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jdk1.7.0_75"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/J2SE-1.5"/>
 	<classpathentry kind="lib" path="resources/libs/lucene-core-2.3.2.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="lib" path="resources/libs/csv4j-0.4.0.jar"/>
@@ -16,5 +16,6 @@
 	<classpathentry kind="lib" path="resources/libs/jna-platform-4.0.0.jar"/>
 	<classpathentry kind="lib" path="resources/libs/jgoodies-looks-2.6.0.jar"/>
 	<classpathentry kind="lib" path="resources/libs/jgoodies-common-1.8.0.jar"/>
+	<classpathentry kind="lib" path="resources/libs/javax.json-1.0.4.jar"/>
 	<classpathentry kind="output" path="deploy/classes"/>
 </classpath>

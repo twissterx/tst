@@ -4,6 +4,8 @@ import java.awt.Component;
 
 import javax.swing.JCheckBox;
 
+import net.sf.timeslottracker.Starter;
+import net.sf.timeslottracker.core.TimeSlotTracker;
 import net.sf.timeslottracker.gui.LayoutManager;
 
 /**
@@ -23,6 +25,10 @@ public class CheckBoxAttribute extends AttributeCategory {
   public CheckBoxAttribute() {
     super();
     editComponent = new JCheckBox();
+    final TimeSlotTracker timeSlotTracker = Starter.getTimeSlotTracker();
+    if (timeSlotTracker != null) {
+      setLayoutManager(timeSlotTracker.getLayoutManager());
+    }    
   }
 
   public CheckBoxAttribute(LayoutManager layoutManager) {

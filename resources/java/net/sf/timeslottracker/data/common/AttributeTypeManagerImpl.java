@@ -5,7 +5,9 @@ import java.util.Collections;
 import java.util.HashMap;
 
 import net.sf.timeslottracker.data.AttributeType;
+import net.sf.timeslottracker.idledetector.NoIdleAttributeType;
 import net.sf.timeslottracker.integrations.issuetracker.IssueKeyAttributeType;
+import net.sf.timeslottracker.integrations.issuetracker.IssueWorklogIdType;
 import net.sf.timeslottracker.integrations.issuetracker.IssueWorklogStatusType;
 import net.sf.timeslottracker.monitoring.ScreenshotAttributeType;
 
@@ -92,6 +94,8 @@ public class AttributeTypeManagerImpl implements AttributeTypeManager {
     register(ScreenshotAttributeType.getInstance());
     register(IssueKeyAttributeType.getInstance());
     register(IssueWorklogStatusType.getInstance());
+    register(NoIdleAttributeType.getInstance());
+    register(IssueWorklogIdType.getInstance());
   }
 
 }
