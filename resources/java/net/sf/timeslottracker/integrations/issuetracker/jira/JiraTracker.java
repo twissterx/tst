@@ -16,6 +16,7 @@ import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonWriter;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 import javax.swing.JOptionPane;
@@ -145,7 +148,7 @@ public class JiraTracker implements IssueTracker {
     });
   }
 
-  public void add(final TimeSlot timeSlot) throws IssueTrackerException {
+  public void update(final TimeSlot timeSlot) throws IssueTrackerException {
     // getting issue key
     final String key = getIssueKey(timeSlot.getTask());
     if (key == null) {
@@ -155,20 +158,13 @@ public class JiraTracker implements IssueTracker {
     LOG.info("Updating jira worklog for issue with key " + key + " ...");
 
     // analyze the existing worklog status and duration
-    final long duration;
     final Attribute statusAttribute = getIssueWorkLogDuration(timeSlot);
-    if (statusAttribute != null) {
-      int lastDuration = Integer
-          .parseInt(String.valueOf(statusAttribute.get()));
-      if (timeSlot.getTime() <= lastDuration) {
+    if (statusAttribute != null && 
+    		Integer.parseInt(String.valueOf(statusAttribute.get())) == getRoundedMinsDuration(timeSlot.getTime())) {
+      
         LOG.info("Skipped updating jira worklog for issue with key " + key
-            + ". Reason: current timeslot duration <= already saved in worklog");
+            + ". Reason: current timeslot duration already saved in worklog");
         return;
-      }
-
-      duration = timeSlot.getTime() - lastDuration;
-    } else {
-      duration = timeSlot.getTime();
     }
 
     Runnable searchIssueTask = new Runnable() {
@@ -188,8 +184,7 @@ public class JiraTracker implements IssueTracker {
         Runnable updateWorklogTask = new Runnable() {
           public void run() {
             try {
-              addWorklog(timeSlot, key, issueId, statusAttribute,
-                  duration);
+              updateWorklog(timeSlot, key, issueId, statusAttribute);
             } catch (IOException e) {
               LOG.warning("Error occured while updating jira worklog:"
                   + e.getMessage());
@@ -213,6 +208,17 @@ public class JiraTracker implements IssueTracker {
     return null;
   }
 
+  private String getIssueWorkLogId(final TimeSlot timeSlot) {
+    for (Attribute attribute : timeSlot.getAttributes()) {
+      if (attribute.getAttributeType().equals(IssueWorklogIdType.getInstance())) {
+    	String id = String.valueOf(attribute.get());
+        return id != null && !id.trim().isEmpty() ? id : null;
+      }
+    }
+
+    return null;
+  }
+  
   public Issue getIssue(String key) throws IssueTrackerException {
     try {
       key = prepareKey(key);
@@ -368,80 +374,116 @@ public class JiraTracker implements IssueTracker {
     return preparedKey != null && preparedKey.matches("[a-z,A-Z0-9]+-[0-9]+");
   }
 
-  private void addWorklog(final TimeSlot timeSlot, final String key,
-                          final String issueId, Attribute statusAttribute,
-                          long duration)
+  private HttpURLConnection createConnection(String urlPath, String method) throws IOException {
+	  URL url = new URL(urlPath);
+	  URLConnection connection = url.openConnection();
+	  
+	  if (connection instanceof HttpURLConnection) {
+	      HttpURLConnection httpConnection = (HttpURLConnection) connection;
+
+	      if (version.equals(JIRA_VERSION_6)) {
+	        String basicAuth = "Basic " + new String(new Base64()
+	            .encode((getLogin() + ":" + getPassword()).getBytes()));
+	        httpConnection.setRequestProperty("Authorization", basicAuth);
+	      }
+	      
+	      httpConnection.setRequestMethod(method);
+	      httpConnection.setDoInput(true);
+	      httpConnection.setDoOutput(true);
+	      httpConnection.setUseCaches(false);
+	      httpConnection.setRequestProperty("Content-Type",
+	          getContentType());
+		  
+	      return httpConnection;
+	  } else {
+		  throw new IOException("Null or invalid type of connection.");
+	  }
+  }
+  
+  private void deleteWorklog(final TimeSlot timeSlot) throws IOException {
+	  String worklogId = getIssueWorkLogId(timeSlot);
+	  String key = getIssueKey(timeSlot.getTask());
+	  
+	  if (worklogId != null && key != null) {
+		HttpURLConnection connection = createConnection(getBaseJiraUrl() + getWorklogPath(key, worklogId),
+				"DELETE");
+	  }
+  }
+  
+  private void updateWorklog(final TimeSlot timeSlot, final String key,
+                          final String issueId, Attribute statusAttribute)
       throws IOException {
-    URL url = new URL(getBaseJiraUrl() + getAddWorklogPath(issueId));
-    URLConnection connection = url.openConnection();
-    if (connection instanceof HttpURLConnection) {
-      HttpURLConnection httpConnection = (HttpURLConnection) connection;
+	String worklogId = getIssueWorkLogId(timeSlot);
+    long jiraDuration = getRoundedMinsDuration(timeSlot.getTime());      
+    String jiraFormDuration = jiraDuration  + "m";
+	
+	HttpURLConnection connection = createConnection(getBaseJiraUrl() + getWorklogPath(issueId, worklogId), 
+			worklogId != null ? "PUT" : "POST");
+	    
+	if (version.equals(JIRA_VERSION_6)) {
+		try (JsonWriter writer = Json.createWriter(connection.getOutputStream())) {
+			JsonObject worklog = buildWorklogJson(jiraFormDuration, timeSlot.getStartDate(), timeSlot.getDescription()); 
+			writer.writeObject(worklog);			 
+		}
+	
+		try (InputStream inputStream = connection.getInputStream()) {
+			if (worklogId == null) {
+				worklogId = getWorklogIdFromResponse(inputStream);
+	      
+				LOG.finest("jira worklogId: " + worklogId);
+				  
+				if (worklogId != null) {
+			        Attribute worklogIdAttribute = new Attribute(IssueWorklogIdType.getInstance());
+			        worklogIdAttribute.set(worklogId);
+			        timeSlot.getAttributes().add(worklogIdAttribute);
+				}
+			}
+		}
+	} else {
+		try (OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream())) {
+			writer.append(getAuthorizedParams()).append(getPair("id", issueId))
+	              .append(getPair("comment", URLEncoder.encode(timeSlot.getDescription(), "UTF-8")))
+	              .append(getPair("worklogId", ""))
+	              .append(getPair("timeLogged", jiraFormDuration))
+	              .append(getPair("startDate", URLEncoder.encode(new SimpleDateFormat("dd/MMM/yy KK:mm a")
+	                      .format(timeSlot.getStartDate()), "UTF-8")))
+	              .append(getPair("adjustEstimate", "auto"))
+	              .append(getPair("newEstimate", ""))
+	              .append(getPair("commentLevel", ""));
+			  
+			writer.flush();
+		}
+		  
+		try (InputStream inputStream = connection.getInputStream()) {}
+	}
+	     
+	if (statusAttribute == null) {
+	  statusAttribute = new Attribute(issueWorklogStatusType);
+	  List<Attribute> list = new ArrayList<Attribute>(
+	      timeSlot.getAttributes());
+	  list.add(statusAttribute);
+	  timeSlot.setAttributes(list);
+	}
+	
+	statusAttribute.set(jiraDuration);
+	  
+	LOG.info("Updated jira worklog with key: " + key);
+  }
 
-      // preparing connection
-      if (version.equals(JIRA_VERSION_6)) {
-        String basicAuth = "Basic " + new String(new Base64()
-            .encode((getLogin() + ":" + getPassword()).getBytes()));
-        httpConnection.setRequestProperty("Authorization", basicAuth);
-      }
-      httpConnection.setRequestMethod("POST");
-      httpConnection.setDoInput(true);
-      httpConnection.setDoOutput(true);
-      httpConnection.setUseCaches(false);
-      httpConnection.setRequestProperty("Content-Type",
-          getContentType());
+  private JsonObject buildWorklogJson(String duration, Date startDate, String description) {
+	  JsonObject object = Json.createObjectBuilder().
+			  add("timeSpent", duration).
+			  add("started", new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SS.sZ")
+			  	.format(startDate)).
+              add("comment", description).	
+			  build();
 
-      // sending data
-      OutputStreamWriter writer = new OutputStreamWriter(
-          httpConnection.getOutputStream());
-      try {
-      	long minsDuration = duration / 1000 / 60;
-    	long roundedDuration = (long)Math.ceil(minsDuration / (float)ROUND_MIN) * ROUND_MIN;
-        String jiraDuration = roundedDuration + "m";
-        if (version.equals(JIRA_VERSION_6)) {
-          writer.append("{").append(getPairSC("timeSpent", jiraDuration)).append(",")
-              .append(getPairSC("started", new SimpleDateFormat("yyyy-MM-dd'T'HH:MM:SS.sZ")
-                  .format(timeSlot.getStartDate()))).append(",")
-              .append(getPairSC("comment", timeSlot.getDescription()))
-              .append("}");
-        } else {
-          writer.append(getAuthorizedParams()).append(getPair("id", issueId))
-              .append(getPair("comment", URLEncoder.encode(timeSlot.getDescription(), "UTF-8")))
-              .append(getPair("worklogId", ""))
-              .append(getPair("timeLogged", jiraDuration))
-              .append(getPair("startDate", URLEncoder.encode(new SimpleDateFormat("dd/MMM/yy KK:mm a")
-                      .format(timeSlot.getStartDate()), "UTF-8")))
-              .append(getPair("adjustEstimate", "auto"))
-              .append(getPair("newEstimate", ""))
-              .append(getPair("commentLevel", ""));
-        }
-      } finally {
-        writer.flush();
-        writer.close();
-      }
-         
-      String worklogId = getWorklogIdFromResponse(connection.getInputStream());      
-      connection.getInputStream().close();
-      
-      LOG.finest("jira worklogId: " + worklogId);
+	  return object;
+  }
 
-      if (statusAttribute == null) {
-        statusAttribute = new Attribute(issueWorklogStatusType);
-        List<Attribute> list = new ArrayList<Attribute>(
-            timeSlot.getAttributes());
-        list.add(statusAttribute);
-        timeSlot.setAttributes(list);
-      }
-
-      statusAttribute.set(timeSlot.getTime());
-
-      if (worklogId != null) {
-          Attribute worklogIdAttribute = new Attribute(IssueWorklogIdType.getInstance());
-          worklogIdAttribute.set(worklogId);
-          timeSlot.getAttributes().add(worklogIdAttribute);
-      }
-      
-      LOG.info("Updated jira worklog with key: " + key);
-    }
+  private long getRoundedMinsDuration(long duration) {
+	  long minsDuration = duration / 1000 / 60;
+	  return (long)Math.ceil(minsDuration / (float)ROUND_MIN) * ROUND_MIN;
   }
 
   private String getWorklogIdFromResponse(InputStream inputStream) {
@@ -460,7 +502,7 @@ public class JiraTracker implements IssueTracker {
 	  return id;
   }
 
-private String getAddWorklogPath(String issueId) {
+private String getWorklogPath(String issueId, String worklogId) {
     String path;
     if (version.equals(JIRA_VERSION_3)) {
       path = "/secure/LogWork.jspa";
@@ -469,7 +511,7 @@ private String getAddWorklogPath(String issueId) {
       path = "/secure/CreateWorklog.jspa";
     }
     else {
-      path = "/rest/api/2/issue/" + issueId + "/worklog";
+      path = "/rest/api/2/issue/" + issueId + "/worklog" + (worklogId != null ? "/" + worklogId : "");
     }
     return path;
   }
@@ -505,10 +547,6 @@ private String getAddWorklogPath(String issueId) {
   private String getLogin() {
     return this.timeSlotTracker.getConfiguration()
         .getString(Configuration.JIRA_LOGIN, "");
-  }
-
-  private String getPairSC(String name, String value) {
-    return "\"" + name + "\"" + ":" + "\"" +value + "\"";
   }
 
   private String getPair(String name, String value) {
@@ -573,7 +611,7 @@ private String getAddWorklogPath(String issueId) {
 
             // stopped or edited task
             try {
-              add(timeSlot);
+              update(timeSlot);
             } catch (IssueTrackerException e) {
               LOG.warning(e.getMessage());
             }

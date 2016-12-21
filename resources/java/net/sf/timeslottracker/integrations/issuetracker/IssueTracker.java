@@ -22,7 +22,7 @@ public interface IssueTracker {
    * @throws IssueTrackerException
    *           occurred while working issue tracker
    */
-  void add(TimeSlot timeSlot) throws IssueTrackerException;
+  void update(TimeSlot timeSlot) throws IssueTrackerException;
 
   /**
    * Returns the issue for selected key

@@ -287,7 +287,7 @@ public class TimeSlotEditDialog extends JDialog implements EditingWindow {
         if (stopDate.getDatetime() != null) {
           TimeSlot activeTimeSlot = layoutManager.getTimeSlotTracker()
               .getActiveTimeSlot();
-          if (timeslot == activeTimeSlot) {
+          if (timeslot == activeTimeSlot || activeTimeSlot == null) {
             layoutManager.getTimeSlotTracker().setActiveTimeSlot(null);
             layoutManager.fireTimeSlotChanged(timeslot);
             layoutManager.getTimeSlotTracker().fireTaskChanged(timeslot.getTask());
