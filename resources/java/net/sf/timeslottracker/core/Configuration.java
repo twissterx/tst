@@ -158,9 +158,19 @@ public class Configuration {
     try {
       InputStream stream = Configuration.class
           .getResourceAsStream("/version.properties");
-      version = new Properties();
-      version.load(stream);
+      
+      if (stream != null) {
+    	  version = new Properties();      
+    	  version.load(stream);
+      } else {
+    	  handleLoadVersionError(new Exception("Failed loading version.properties"));
+      }
     } catch (IOException ex) {
+    	handleLoadVersionError(ex);
+    }
+  }
+
+  private void handleLoadVersionError(Exception ex) {
       timeSlotTracker.errorLog(ex);
       Object[] msgArgs = { ex.getMessage() };
       String warningTitle = timeSlotTracker
@@ -169,9 +179,8 @@ public class Configuration {
           "configuration.loadVersionProperties.exception.msg", msgArgs);
       JOptionPane.showMessageDialog(timeSlotTracker.getRootFrame(), warningMsg,
           warningTitle, JOptionPane.ERROR_MESSAGE);
-    }
   }
-
+  
   /**
    * Returns loaded version properties.
    *
