@@ -19,7 +19,7 @@
     <property environment="env"/>
     <property name="user.homedir" value="${env.HOME}"/>
 
-    <property name="javac.source" value="1.6"/>
+    <property name="javac.source" value="1.8"/>
     <property name="javac.target" value="${javac.source}"/>
 
     <property name="deploy" location="deploy"/>

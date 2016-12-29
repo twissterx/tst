@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collection;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
@@ -196,6 +197,32 @@ public class JiraTracker implements IssueTracker {
 
     };
     executorService.execute(searchIssueTask);
+  }
+
+  private void delete(final TimeSlot timeSlot) {
+      final String key = getIssueKey(timeSlot.getAttributes());
+      if (key == null) {
+          return;
+      }
+
+      final String worklogId = getIssueWorkLogId(timeSlot);
+      if (worklogId == null) {
+          return;
+      }
+
+      LOG.info("Deleting jira worklog for issue with key " + key + " ...");
+
+      Runnable deleteWorkLogTask = () -> {
+        try {
+            deleteWorklog(key, worklogId);
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(timeSlotTracker.getRootFrame(),
+                "Error occured while deleting Jira worklog: " + e.getMessage(),
+                "Server error", JOptionPane.ERROR_MESSAGE);
+        }
+      };
+
+      executorService.execute(deleteWorkLogTask);
   }
 
   private Attribute getIssueWorkLogDuration(final TimeSlot timeSlot) {
@@ -400,14 +427,13 @@ public class JiraTracker implements IssueTracker {
 	  }
   }
   
-  private void deleteWorklog(final TimeSlot timeSlot) throws IOException {
-	  String worklogId = getIssueWorkLogId(timeSlot);
-	  String key = getIssueKey(timeSlot.getTask());
-	  
-	  if (worklogId != null && key != null) {
-		HttpURLConnection connection = createConnection(getBaseJiraUrl() + getWorklogPath(key, worklogId),
-				"DELETE");
-	  }
+  private void deleteWorklog(final String issueKey, final String worklogId) throws IOException {
+    HttpURLConnection connection = createConnection(getBaseJiraUrl() + getWorklogPath(issueKey, worklogId),
+            "DELETE");
+
+    try (InputStream inputStream = connection.getInputStream()) {
+        //just open the stream to check if there was no server error
+    }
   }
   
   private void updateWorklog(final TimeSlot timeSlot, final String key,
@@ -536,7 +562,11 @@ private String getWorklogPath(String issueId, String worklogId) {
   }
 
   private String getIssueKey(Task task) {
-    for (Attribute attribute : task.getAttributes()) {
+      return getIssueKey(task.getAttributes());
+  }
+
+  private String getIssueKey(Collection<Attribute> attributes) {
+    for (Attribute attribute : attributes) {
       if (attribute.getAttributeType().equals(issueKeyAttributeType)) {
         return String.valueOf(attribute.get());
       }
@@ -603,18 +633,18 @@ private String getWorklogPath(String issueId, String worklogId) {
             if (isNullStop) {
               return;
             }
-
-            // removed timeSlot
-            if (timeSlot.getTask() == null) {
-              return;
-            }
-
-            // stopped or edited task
+            
             try {
-              update(timeSlot);
+                if (timeSlot.getTask() == null) {
+                    delete(timeSlot);
+                } else {
+                    // stopped or edited task
+                    update(timeSlot);
+                }
             } catch (IssueTrackerException e) {
-              LOG.warning(e.getMessage());
+                LOG.warning(e.getMessage());
             }
+            
           }
         });
   }

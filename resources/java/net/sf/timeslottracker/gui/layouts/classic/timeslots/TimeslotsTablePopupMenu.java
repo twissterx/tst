@@ -9,6 +9,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Collection;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -17,6 +18,7 @@ import javax.swing.JTable;
 import javax.swing.KeyStroke;
 import javax.swing.TransferHandler;
 
+import net.sf.timeslottracker.data.Attribute;
 import net.sf.timeslottracker.data.DataSource;
 import net.sf.timeslottracker.data.Task;
 import net.sf.timeslottracker.data.TimeSlot;
@@ -480,11 +482,23 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
       
       Task selectedTask = selectedTimeSlot.getTask();
       selectedTask.deleteTimeslot(selectedTimeSlot);
+
+      //copy task attributes to timeslot for further process of timeslot delete
+      copyBuiltinAttributes(selectedTask.getAttributes(), selectedTimeSlot.getAttributes());
+
       layoutManager.fireTimeSlotChanged(selectedTimeSlot);
       // because we have removed the link to task in deleteTimeslot method we
       // have to inform task listeners as well
       layoutManager.getTimeSlotTracker().fireTaskChanged(selectedTask);
     }
+  }
+
+  private void copyBuiltinAttributes(Collection<Attribute> srcAttributes, Collection<Attribute> targetAttributes) {
+    srcAttributes.forEach(attr -> {
+      if (attr.getAttributeType() != null && attr.getAttributeType().isBuiltin()) {
+        targetAttributes.add(attr);
+      }
+    });
   }
 
   private TimeSlot getTimeSlotByTreeRowId(int selectedRow) {
