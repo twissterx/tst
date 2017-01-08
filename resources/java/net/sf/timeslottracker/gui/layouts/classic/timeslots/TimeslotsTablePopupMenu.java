@@ -74,6 +74,8 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
 
   private JMenuItem splitTimeslot;
 
+  private JMenuItem mergeTimeslots;
+
   TimeslotsTablePopupMenu(final LayoutManager layoutManager,
       final JTable timeslotsTable, final TimeSlotsInterface timeslots) {
     super(layoutManager.getString("timeslots.popupmenu.title"));
@@ -170,6 +172,16 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
     splitTimeslot.setAccelerator(KeyStroke.getKeyStroke(keyStroke.getKeyCode(),
         ActionEvent.CTRL_MASK));
     add(splitTimeslot);
+
+    mergeTimeslots = new JMenuItem(new MergeTimeslotsAction());
+    mergeTimeslots.setText(layoutManager
+            .getString("timeslots.popupmenu.mergeTimeslots.name"));
+    keyStroke = KeyStroke.getKeyStroke(layoutManager
+            .getString("timeslots.popupmenu.mergeTimeslots.mnemonic"));
+    mergeTimeslots.setMnemonic(keyStroke.getKeyCode());
+    mergeTimeslots.setAccelerator(KeyStroke.getKeyStroke(keyStroke.getKeyCode(),
+            ActionEvent.CTRL_MASK));
+    add(mergeTimeslots);
 
     pasteTimeslot = new JMenuItem(null);
     pasteTimeslot.setActionCommand((String) TransferHandler.getPasteAction()
@@ -465,40 +477,8 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
     }
 
     public void actionPerformed(ActionEvent e) {
-      int selectedRow = timeslotsTable.getSelectedRow();
-      if (selectedRow < 0 || timeslotsTable.getSelectedRowCount() != 1) {
-        return;
-      }
-      TimeSlot selectedTimeSlot = getTimeSlotByTreeRowId(selectedRow);
-      if (selectedTimeSlot == null) {
-        return;
-      }
-      
-      // reset active timeslot before deleting active timeslot
-      if (selectedTimeSlot.equals(layoutManager.getTimeSlotTracker()
-          .getActiveTimeSlot())) {
-        layoutManager.getTimeSlotTracker().setActiveTimeSlot(null);
-      }
-      
-      Task selectedTask = selectedTimeSlot.getTask();
-      selectedTask.deleteTimeslot(selectedTimeSlot);
-
-      //copy task attributes to timeslot for further process of timeslot delete
-      copyBuiltinAttributes(selectedTask.getAttributes(), selectedTimeSlot.getAttributes());
-
-      layoutManager.fireTimeSlotChanged(selectedTimeSlot);
-      // because we have removed the link to task in deleteTimeslot method we
-      // have to inform task listeners as well
-      layoutManager.getTimeSlotTracker().fireTaskChanged(selectedTask);
+      timeslots.deleteSelected();
     }
-  }
-
-  private void copyBuiltinAttributes(Collection<Attribute> srcAttributes, Collection<Attribute> targetAttributes) {
-    srcAttributes.forEach(attr -> {
-      if (attr.getAttributeType() != null && attr.getAttributeType().isBuiltin()) {
-        targetAttributes.add(attr);
-      }
-    });
   }
 
   private TimeSlot getTimeSlotByTreeRowId(int selectedRow) {
@@ -535,4 +515,18 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
     }
   }
 
+  /**
+   * Handles merge timeslots action into one timeslots.
+   */
+  private class MergeTimeslotsAction extends AbstractAction {
+    private MergeTimeslotsAction() {
+      super(layoutManager.getString("timeslots.popupmenu.mergeTimeslots.name"),
+              layoutManager.getIcon("merge"));
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+      timeslots.mergeSelected();
+    }
+  }
 }

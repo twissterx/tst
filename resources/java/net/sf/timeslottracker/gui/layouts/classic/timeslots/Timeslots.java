@@ -620,4 +620,84 @@ public class Timeslots extends JPanel implements TimeSlotsInterface,
     }
     return getTimeSlotByTreeRowId(rowSelected);
   }
+
+  @Override
+  public void mergeSelected() {
+    int minRowSelected = table.getSelectionModel().getMinSelectionIndex();
+    int maxRowSelected = table.getSelectionModel().getMaxSelectionIndex();
+
+    if (minRowSelected < 0 || maxRowSelected < 0 || table.getSelectedRowCount() == 1) {
+      return;
+    }
+
+    TimeSlot firstTimeslot = getTimeSlotByTreeRowId(minRowSelected);
+    TimeSlot lastTimeslot = getTimeSlotByTreeRowId(maxRowSelected);
+
+    firstTimeslot.setStopDate(lastTimeslot.getStopDate());
+
+    layoutManager.fireTimeSlotChanged(firstTimeslot);
+
+    for (int row = minRowSelected + 1; row <= maxRowSelected; row++) {
+      delete(row, row == maxRowSelected);
+    }
+
+    selectTimeSlot(firstTimeslot);
+  }
+
+  /**
+   * Deletes timeslot at given row
+   *
+   * @param row row index
+   * @param triggerTaskChange indicates whether to trigger task change event
+   */
+  private void delete(int row, boolean triggerTaskChange) {
+    TimeSlot selectedTimeSlot = getTimeSlotByTreeRowId(row);
+    if (selectedTimeSlot == null) {
+      return;
+    }
+
+    // reset active timeslot before deleting active timeslot
+    if (selectedTimeSlot.equals(layoutManager.getTimeSlotTracker()
+            .getActiveTimeSlot())) {
+      layoutManager.getTimeSlotTracker().setActiveTimeSlot(null);
+    }
+
+    Task selectedTask = selectedTimeSlot.getTask();
+    selectedTask.deleteTimeslot(selectedTimeSlot);
+
+    //copy task attributes to timeslot for further process of timeslot delete
+    copyBuiltinAttributes(selectedTask.getAttributes(), selectedTimeSlot.getAttributes());
+
+    layoutManager.fireTimeSlotChanged(selectedTimeSlot);
+
+    if (triggerTaskChange) {
+      // because we have removed the link to task in deleteTimeslot method we
+      // have to inform task listeners as well
+      layoutManager.getTimeSlotTracker().fireTaskChanged(selectedTask);
+    }
+  }
+
+  @Override
+  public void deleteSelected() {
+    int selectedRow = table.getSelectedRow();
+    if (selectedRow < 0 || table.getSelectedRowCount() != 1) {
+      return;
+    }
+
+    delete(selectedRow, true);
+  }
+
+  /**
+   * Copies attributes from one collection of attributes to another
+   *
+   * @param srcAttributes source collection of attributes
+   * @param targetAttributes target collection of attributes
+   */
+  private void copyBuiltinAttributes(Collection<Attribute> srcAttributes, Collection<Attribute> targetAttributes) {
+    srcAttributes.forEach(attr -> {
+      if (attr.getAttributeType() != null && attr.getAttributeType().isBuiltin()) {
+        targetAttributes.add(attr);
+      }
+    });
+  }
 }

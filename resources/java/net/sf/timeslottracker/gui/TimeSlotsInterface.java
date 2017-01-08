@@ -107,4 +107,13 @@ public interface TimeSlotsInterface {
    */
   TimeSlot getSelected();
 
+  /**
+   * Merges selected timeslots into one timeslot
+   */
+  void mergeSelected();
+
+  /**
+   * Deletes selected timeslots
+   */
+  void deleteSelected();
 }
