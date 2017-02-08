@@ -289,9 +289,10 @@ public class TimeSlotEditDialog extends JDialog implements EditingWindow {
               .getActiveTimeSlot();
           if (timeslot == activeTimeSlot || activeTimeSlot == null) {
             layoutManager.getTimeSlotTracker().setActiveTimeSlot(null);
-            layoutManager.fireTimeSlotChanged(timeslot);
-            layoutManager.getTimeSlotTracker().fireTaskChanged(timeslot.getTask());
           }
+          
+          layoutManager.fireTimeSlotChanged(timeslot);
+          layoutManager.getTimeSlotTracker().fireTaskChanged(timeslot.getTask());
         }
         close();
       } catch (NumberFormatException nfe) {
