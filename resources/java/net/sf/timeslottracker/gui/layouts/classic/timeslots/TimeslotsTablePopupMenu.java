@@ -430,7 +430,7 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
     }
 
     public void actionPerformed(ActionEvent e) {
-      TimeSlotEditDialog dialog = new TimeSlotEditDialog(layoutManager, null,
+      TimeSlotEditDialog dialog = new TimeSlotEditDialog(layoutManager, timeslots.getSelectedTask(), null,
           false);
       TimeSlot timeslot = dialog.getTimeslot();
       if (timeslot != null) {
@@ -460,7 +460,7 @@ public class TimeslotsTablePopupMenu extends JPopupMenu {
       }
       TimeSlot newTimeslot = dataSource.createTimeSlot(null, null, null,
           description);
-      TimeSlotEditDialog dialog = new TimeSlotEditDialog(layoutManager,
+      TimeSlotEditDialog dialog = new TimeSlotEditDialog(layoutManager, timeslots.getSelectedTask(),
           newTimeslot, false);
       TimeSlot timeslot = dialog.getTimeslot();
       if (timeslot != null) {

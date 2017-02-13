@@ -26,6 +26,7 @@ import org.apache.commons.lang.StringUtils;
 
 import net.sf.timeslottracker.data.Attribute;
 import net.sf.timeslottracker.data.DataSource;
+import net.sf.timeslottracker.data.Task;
 import net.sf.timeslottracker.data.TimeSlot;
 import net.sf.timeslottracker.gui.attributes.AttributeEditDialog;
 import net.sf.timeslottracker.gui.attributes.EditingWindow;
@@ -47,6 +48,7 @@ public class TimeSlotEditDialog extends JDialog implements EditingWindow {
   private boolean readonly;
 
   private TimeSlot timeslot;
+  private Task task;
   private DatetimeEditPanel startDate;
   private DatetimeEditPanel stopDate;
   private DescriptionInputComboBox inputComboBox;
@@ -54,7 +56,7 @@ public class TimeSlotEditDialog extends JDialog implements EditingWindow {
   private JTable table;
   private TimeSlotAttributeTableModel tableModel;
 
-  public TimeSlotEditDialog(LayoutManager layoutManager, TimeSlot timeslot,
+  public TimeSlotEditDialog(LayoutManager layoutManager, Task task, TimeSlot timeslot,
       boolean readonly) {
     super(layoutManager.getTimeSlotTracker().getRootFrame(), layoutManager
         .getCoreString("editDialog.timeslot.title"
@@ -62,6 +64,7 @@ public class TimeSlotEditDialog extends JDialog implements EditingWindow {
 
     this.layoutManager = layoutManager;
     this.timeslot = timeslot;
+    this.task = task;
     this.readonly = readonly;
 
     this.inputComboBox = new DescriptionInputComboBox(layoutManager, readonly);
@@ -276,7 +279,7 @@ public class TimeSlotEditDialog extends JDialog implements EditingWindow {
         if (timeslot == null) {
           DataSource dataSource = layoutManager.getTimeSlotTracker()
               .getDataSource();
-          timeslot = dataSource.createTimeSlot(null, startDate.getDatetime(),
+          timeslot = dataSource.createTimeSlot(task, startDate.getDatetime(),
               stopDate.getDatetime(), description);
         } else {
           timeslot.setStartDate(startDate.getDatetime());

@@ -255,7 +255,7 @@ public class Timeslots extends JPanel implements TimeSlotsInterface,
       return;
     }
 
-    TimeSlotEditDialog dialog = new TimeSlotEditDialog(layoutManager, timeslot,
+    TimeSlotEditDialog dialog = new TimeSlotEditDialog(layoutManager, actualTask, timeslot,
         false);
     TimeSlot newTimeSlot = dialog.getTimeslot();
     if (newTimeSlot != null) {
